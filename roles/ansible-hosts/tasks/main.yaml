@@ -1,0 +1,4 @@
+---
+- include: facts.yaml
+
+- include: hosts.yaml

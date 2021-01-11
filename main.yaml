@@ -67,12 +67,6 @@
       resource_group: "{{ resource_group }}"
       name: "{{ vnet.name }}-internal-nsg"
       rules:
-        - name: 'allow_rdp'
-          protocol: Tcp
-          destination_port_range: 3389
-          access: Allow
-          priority: 1001
-          direction: Inbound
         - name: 'allow_powershell_remoting'
           protocol: Tcp
           destination_port_range:
