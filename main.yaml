@@ -1,0 +1,229 @@
+- name: Create VM Network and Components and VMS
+  hosts: localhost
+  gather_facts: no
+  connection: local
+  vars:
+    resource_group: "{{ resource_group_name }}"
+    vm_username: azureadmin
+    vm_password: "{{ vm_password }}"
+    vms: 
+      iis:
+        - name: iisdemo-a
+          zone: "1"
+          publicip:
+            name: iispublicip-a
+            resource_group: "{{ resource_group }}"
+          azure_rm_networkinterface_info:
+            name: "iisdemo-a-nic"
+            resource_group: "{{ resource_group }}"
+          add_host:
+            name: "iisdemo-a"
+            ansible_user: "{{ vm_username }}"
+            ansible_password: "{{ vm_password }}"
+            ansible_connection: winrm
+            ansible_port: 5986
+            ansible_winrm_server_cert_validation: ignore
+            ansible_winrm_transport: ssl
+            groupname: azure_vms
+
+        - name: iisdemo-b
+          azure_rm_networkinterface_info:
+            name: "iisdemo-b-nic"
+            resource_group: "{{ resource_group }}"
+          zone: "2"
+          publicip:
+            name: iispublicip-b
+            resource_group: "{{ resource_group }}"
+          add_host:
+            name: "iisdemo-b"
+            ansible_user: "{{ vm_username }}"
+            ansible_password: "{{ vm_password }}"
+            ansible_connection: winrm
+            ansible_port: 5986
+            ansible_winrm_server_cert_validation: ignore
+            ansible_winrm_transport: ssl
+            groupname: azure_vms
+
+    vnet: 
+      name: demo-vnet
+      address_space: "192.168.0.0/20"
+      internal_network: "192.168.1.0/24"
+      external_network: "192.168.2.0/24"
+    location: eastus
+
+    winrm_enable_script: SQBuAHYAbwBrAGUALQBFAHgAcAByAGUAcwBzAGkAbwBuACAALQBDAG8AbQBtAGEAbgBkACAAKAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABTAHkAcwB0AGUAbQAuAE4AZQB0AC4AVwBlAGIAQwBsAGkAZQBuAHQAKQAuAEQAbwB3AG4AbABvAGEAZABTAHQAcgBpAG4AZwAoACcAaAB0AHQAcABzADoALwAvAHIAYQB3AC4AZwBpAHQAaAB1AGIAdQBzAGUAcgBjAG8AbgB0AGUAbgB0AC4AYwBvAG0ALwBhAG4AcwBpAGIAbABlAC8AYQBuAHMAaQBiAGwAZQAvAGQAZQB2AGUAbAAvAGUAeABhAG0AcABsAGUAcwAvAHMAYwByAGkAcAB0AHMALwBDAG8AbgBmAGkAZwB1AHIAZQBSAGUAbQBvAHQAaQBuAGcARgBvAHIAQQBuAHMAaQBiAGwAZQAuAHAAcwAxACcAKQApADsAIABFAG4AYQBiAGwAZQAtAFcAUwBNAGEAbgBDAHIAZQBkAFMAUwBQACAALQBSAG8AbABlACAAUwBlAHIAdgBlAHIAIAAtAEYAbwByAGMAZQA=
+
+  tasks:
+
+  - name: Create Demo VNET
+    azure_rm_virtualnetwork:
+      resource_group: "{{ resource_group }}"
+      name: "{{ vnet.name }}"
+      state: present
+      address_prefixes: "{{ vnet.address_space }}"
+
+  - name: Create Network Security Group
+    azure_rm_securitygroup:
+      resource_group: "{{ resource_group }}"
+      name: "{{ vnet.name }}-internal-nsg"
+      rules:
+        - name: 'allow_rdp'
+          protocol: Tcp
+          destination_port_range: 3389
+          access: Allow
+          priority: 1001
+          direction: Inbound
+        - name: 'allow_powershell_remoting'
+          protocol: Tcp
+          destination_port_range:
+              - 5985
+              - 5986
+          access: Allow
+          priority: 1002
+          direction: Inbound
+
+  - name: Create Network Security Group
+    azure_rm_securitygroup:
+      resource_group: "{{ resource_group }}"
+      name: "{{ vnet.name }}-external-nsg"
+      rules:
+        - name: 'allow_web_traffic'
+          protocol: Tcp
+          destination_port_range:
+              - 80
+              - 443
+          access: Allow
+          priority: 1001
+          direction: Inbound
+
+  - name: Create Internal Subnet
+    azure_rm_subnet:
+      resource_group: "{{ resource_group }}"
+      name: "{{ vnet.name }}-internal"
+      state: present
+      address_prefix: "{{ vnet.internal_network }}"
+      virtual_network: "{{ vnet.name }}"
+      security_group: "{{ vnet.name }}-internal-nsg"
+
+  - name: Create External Subnet
+    azure_rm_subnet:
+      resource_group: "{{ resource_group }}"
+      name: "{{ vnet.name }}-external"
+      address_prefix: "{{ vnet.external_network }}"
+      virtual_network: "{{ vnet.name }}"
+      security_group: "{{ vnet.name }}-external-nsg"
+
+  - name: Create Load balncer public IP
+    azure_rm_publicipaddress:
+      resource_group: "{{ resource_group }}"
+      sku: standard
+      allocation_method: Static
+      name: iislbpublicip
+    register: output_lb_address
+
+  - name: Create Front End Load Balancer
+    azure_rm_loadbalancer:
+      resource_group: "{{ resource_group }}"
+      name: demoiislb
+      sku: Standard
+      frontend_ip_configurations:
+        - name: frontendipconf0
+          public_ip_address: iislbpublicip
+      backend_address_pools:
+        - name: webservers
+      probes:
+        - name: httpsprobe
+          port: 443
+        - name: httpprobe
+          port: 80
+      load_balancing_rules:
+        - name: lbrbalancingrule0
+          frontend_ip_configuration: frontendipconf0
+          backend_address_pool: webservers
+          frontend_port: 80
+          backend_port: 80
+          probe: httpprobe
+        - name: lbrbalancingrule1
+          frontend_ip_configuration: frontendipconf0
+          backend_address_pool: webservers
+          frontend_port: 443
+          backend_port: 443
+          probe: httpsprobe
+
+  - name: Create VM public IP addresses
+    azure_rm_publicipaddress:
+      resource_group: "{{ resource_group }}"
+      sku: standard
+      allocation_method: Static
+      name: "{{ item.publicip.name }}"
+    with_items: "{{ vms.iis }}"
+    register: output_ip_address
+
+  - name: Create VM network interfaces
+    azure_rm_networkinterface:
+      name: "{{ item.azure_rm_networkinterface_info.name }}"
+      resource_group: "{{ resource_group }}"
+      virtual_network: "{{ vnet.name }}"
+      subnet_name: "{{ vnet.name }}-internal"
+      create_with_security_group: False
+      ip_configurations:
+        - name: default
+          public_ip_address_name: "{{ item.publicip.name }}"
+          load_balancer_backend_address_pools:
+            - name: webservers
+              load_balancer: demoiislb
+          primary: True
+    with_items: "{{ vms.iis }}"
+
+  - name: provision IIS Vms
+    azure_rm_virtualmachine:
+      admin_username: '{{ vm_username }}'
+      admin_password: "{{ vm_password }}"
+      ssh_password_enabled: False
+      os_type: Windows
+      os_disk_size_gb: "127"
+      managed_disk_type: "Standard_LRS"
+      image:
+        offer: WindowsServer
+        publisher: MicrosoftWindowsServer
+        sku: 2016-Datacenter
+        version: latest
+      name: "{{ item.name }}"
+      resource_group: "{{ resource_group }}"
+      network_interface_names:
+        - "{{ item.azure_rm_networkinterface_info.name }}"
+      state: present
+      vm_size: Standard_B4ms
+      zones:
+        - "{{ item.zone }}"
+      virtual_network_name: "{{ vnet.name }}"
+      subnet_name: "{{ vnet.name }}-internal"
+    with_items: "{{ vms.iis }}"
+
+  - name: create Azure vm extension to enable HTTPS WinRM listener
+    azure_rm_virtualmachineextension:
+      name: winrm-extension
+      resource_group: "{{ resource_group }}"
+      virtual_machine_name: "{{ item.name }}"
+      publisher: Microsoft.Compute
+      virtual_machine_extension_type: CustomScriptExtension
+      type_handler_version: 1.9
+      settings: '{"commandToExecute": "powershell.exe -ExecutionPolicy ByPass -EncodedCommand {{winrm_enable_script}}"}'
+      auto_upgrade_minor_version: true
+    with_items: "{{ vms.iis }}"
+
+  - name: Add Azure VMS to Ansible Hosts
+    include_role:
+      name: ansible-hosts
+    vars:
+      vm_name: "{{ item.name }}"
+      azure_rm_publicipaddress_info: "{{ item.publicip }}"
+      add_host: "{{ item.add_host }}"
+    with_items: "{{ vms.iis }}"
+
+- name: Configure IIS VMS and bring up website
+  hosts: iisdemo-a,iisdemo-b
+  gather_facts: yes
+  roles:
+    - role: web-server
+

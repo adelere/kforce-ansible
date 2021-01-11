@@ -1,0 +1,14 @@
+---
+- name: "Add {{ vm_name }} instance to the host group"
+  add_host:
+    name: "{{ add_host.name }}"
+    hostname: "{{ add_host.hostname | default(azure_publicipaddresses.publicipaddresses[0].ip_address) }}"
+    ansible_host: "{{ add_host.ansible_host |  default(azure_publicipaddresses.publicipaddresses[0].ip_address) }}"
+    ansible_user: "{{ add_host.ansible_user }}"
+    ansible_password: "{{ add_host.ansible_password }}"
+    ansible_connection: "{{ add_host.ansible_connection }}"
+    ansible_port: "{{ add_host.ansible_port }}"
+    ansible_winrm_server_cert_validation: "{{ add_host.ansible_winrm_server_cert_validation }}"
+    ansible_winrm_transport: "{{ add_host.ansible_winrm_transport }}"
+    private_ip: "{{ add_host.private_ip | default(azure_publicipaddresses.publicipaddresses[0].ip_address) }}"
+    groupname: "{{ add_host.groupname }}"

@@ -1,0 +1,6 @@
+---
+- name: "Get Network Interface Facts for {{ vm_name }}"
+  azure_rm_publicipaddress_info:
+    resource_group: "{{ azure_rm_publicipaddress_info.resource_group }}"
+    name: "{{ azure_rm_publicipaddress_info.name }}"
+  register: azure_publicipaddresses

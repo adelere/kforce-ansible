@@ -1,0 +1,17 @@
+---
+azure_rm_publicipaddress_info:
+  resource_group: "{{ publicip.resource_group }}"
+  name: "{{ publicip.name }}"
+
+add_host: 
+  name: "{{ add_host.name }}"
+  hostname: "{{ add_host.hostname }}"
+  ansible_host: "{{ add_host.ansible_host }}"
+  ansible_user: "{{ add_host.ansible_user }}"
+  ansible_password: "{{ add_host.ansible_password }}"
+  ansible_connection: "{{ add_host.ansible_connection }}"
+  ansible_port: "{{ add_host.ansible_port }}"
+  ansible_winrm_server_cert_validation: "{{ add_host.ansible_winrm_server_cert_validation }}"
+  ansible_winrm_transport: "{{ add_host.ansible_winrm_transport }}"
+  private_ip: "{{ add_host.private_ip }}"
+  groupname: "{{ add_host.groupname }}"

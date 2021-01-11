@@ -1,0 +1,83 @@
+---
+- name: Enable IIS on Virtual Machines
+  win_feature:
+    name: Web-Server
+    state: present
+    include_sub_features: yes
+    include_management_tools: yes
+  register: win_feature
+
+- name: Create directory structure
+  win_file:
+    path: C:\sites\demo\
+    state: directory
+
+- name: Copy index.html to specified path only if modified
+  win_copy:
+    src: files/index.html
+    dest: C:\sites\demo\index.html
+    force: yes
+
+- name: Copy cats.jpg to specified path only if modified
+  win_copy:
+    src: files/cats.jpg
+    dest: C:\sites\demo\cats.jpg
+    force: yes
+
+- name: Add a HTTPS binding
+  win_iis_webbinding:
+    name: Demo Web Site
+    protocol: https
+    port: 443
+    ip: "*"
+    state: present
+
+- name: Demo IIS site
+  win_iis_website:
+    name: Demo Web Site
+    state: started
+    port: 443
+    protocol: https
+    ip: "*"
+    hostname: cats.internet.local
+    application_pool: acme
+    physical_path: C:\sites\demo
+    parameters: logfile.directory:C:\sites\logs
+  register: website
+
+- name: Remove the default http binding
+  win_iis_webbinding:
+    name: Default Web Site
+    port: 80
+    ip: '*'
+    state: absent
+
+# Remove Default Web Site and the standard port 80 binding
+- name: Remove Default Web Site
+  win_iis_website:
+    name: "Default Web Site"
+    state: absent
+
+- name: Website / Create Firewall Rule
+  win_firewall_rule:
+    name: "allow http in"
+    localport: "80"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: present
+    enabled: yes
+
+- name: Website / {{ website.name }} / Create Firewall Rule
+  win_firewall_rule:
+    name: "allow https in"
+    localport: "443"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: present
+    enabled: yes
+
+- name: Reboot Machine
+  win_reboot:
+  when: win_feature.reboot_required
