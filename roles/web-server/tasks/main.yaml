@@ -55,10 +55,10 @@
     parameters: logfile.directory:C:\sites\logs
   register: website
 
-- name: Add a HTTPS binding
+- name: Add a HTTP binding
   win_iis_webbinding:
     name: Demo Web Site
-    protocol: https
+    protocol: http
     port: 80
     ip: "*"
     state: present
