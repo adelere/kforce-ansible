@@ -1,12 +1,9 @@
 ---
-- name: Change the hostname to sample-hostname
-  win_hostname:
-    name: cats.internet.local
-  register: res
-
-- name: Reboot
-  win_reboot:
-  when: res.reboot_required
+- name: Add 127.0.0.1 as an A record for cats.internet.local
+  win_hosts:
+    state: present
+    canonical_name: cats.internet.local
+    ip_address: 127.0.0.1
 
 - name: Enable IIS on Virtual Machines
   win_feature:
@@ -66,7 +63,7 @@
     ip: "*"
     state: present
 
-- name: Website / Create Firewall Rule
+- name: Create Firewall Rule Port 80
   win_firewall_rule:
     name: "allow http in"
     localport: "80"
@@ -76,7 +73,7 @@
     state: present
     enabled: yes
 
-- name: Website / {{ website.name }} / Create Firewall Rule
+- name: Create Firewall Rule Port 443
   win_firewall_rule:
     name: "allow https in"
     localport: "443"
