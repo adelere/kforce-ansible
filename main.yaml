@@ -75,6 +75,15 @@
           access: Allow
           priority: 1002
           direction: Inbound
+      rules:
+        - name: 'allow_web_traffic'
+          protocol: Tcp
+          destination_port_range:
+              - 80
+              - 443
+          access: Allow
+          priority: 1001
+          direction: Inbound
 
   - name: Create Network Security Group
     azure_rm_securitygroup:
