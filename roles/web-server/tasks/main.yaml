@@ -32,7 +32,6 @@
     protocol: https
     ip: "*"
     hostname: cats.internet.local
-    application_pool: acme
     physical_path: C:\sites\demo
     parameters: logfile.directory:C:\sites\logs
   register: website
