@@ -15,7 +15,7 @@
 
 - name: Create directory structure
   win_file:
-    path: C:\sites\demo\
+    path: C:\sites\demo\images\
     state: directory
 
 - name: Copy index.html to specified path only if modified
