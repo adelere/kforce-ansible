@@ -1,4 +1,13 @@
 ---
+- name: Change the hostname to sample-hostname
+  win_hostname:
+    name: cats.internet.local
+  register: res
+
+- name: Reboot
+  win_reboot:
+  when: res.reboot_required
+
 - name: Enable IIS on Virtual Machines
   win_feature:
     name: Web-Server
@@ -21,28 +30,8 @@
 - name: Copy cats.jpg to specified path only if modified
   win_copy:
     src: files/cats.jpg
-    dest: C:\sites\demo\cats.jpg
+    dest: C:\sites\demo\images\cats.jpg
     force: yes
-
-- name: Demo IIS site
-  win_iis_website:
-    name: Demo Web Site
-    state: started
-    port: 443
-    protocol: https
-    ip: "*"
-    hostname: cats.internet.local
-    physical_path: C:\sites\demo
-    parameters: logfile.directory:C:\sites\logs
-  register: website
-
-- name: Add a HTTPS binding
-  win_iis_webbinding:
-    name: Demo Web Site
-    protocol: https
-    port: 443
-    ip: "*"
-    state: present
 
 - name: Remove the default http binding
   win_iis_webbinding:
@@ -56,6 +45,26 @@
   win_iis_website:
     name: "Default Web Site"
     state: absent
+
+- name: Demo IIS site
+  win_iis_website:
+    name: Demo Web Site
+    state: started
+    port: 80
+    protocol: http
+    ip: "*"
+    hostname: cats.internet.local
+    physical_path: C:\sites\demo
+    parameters: logfile.directory:C:\sites\logs
+  register: website
+
+- name: Add a HTTPS binding
+  win_iis_webbinding:
+    name: Demo Web Site
+    protocol: https
+    port: 80
+    ip: "*"
+    state: present
 
 - name: Website / Create Firewall Rule
   win_firewall_rule:
